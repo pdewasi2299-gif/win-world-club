@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Win World Club</title>
+
+<style>
+body{margin:0;font-family:Arial;background:linear-gradient(135deg,#000,#1a1a1a,#000);color:white;text-align:center}
+.box{max-width:430px;margin:auto;padding:20px}
+.title{font-size:26px;color:#FFD700;font-weight:bold;letter-spacing:2px;margin:15px 0}
+.card{background:rgba(255,215,0,.05);border:1px solid rgba(255,215,0,.25);border-radius:20px;padding:18px;margin:15px 0;box-shadow:0 0 15px rgba(255,215,0,.2)}
+.bigNo{font-size:70px;font-weight:bold;color:#FFD700;text-shadow:0 0 15px gold}
+input{width:85%;padding:12px;border-radius:10px;border:1px solid gold;background:#000;color:white}
+button{border:0;border-radius:12px;padding:12px;margin:5px;color:white;font-weight:bold}
+.red{background:#c62828}.green{background:#2e7d32}.violet{background:#6a1b9a}
+.num{background:#111;border:1px solid gold;color:#FFD700;width:45px;height:45px}
+.selected{box-shadow:0 0 12px gold;border:2px solid gold}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border-bottom:1px solid rgba(255,215,0,.25);padding:6px}
+h3{color:#FFD700}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<div class="title">🔥 WIN WORLD CLUB</div>
+
+<div class="card">
+<h3>Wallet: <span id="wallet">1000</span></h3>
+<p>Timer: <span id="timer">30</span>s</p>
+<div class="bigNo" id="liveNumber">-</div>
+<h3 id="result">Waiting...</h3>
+<p id="msg"></p>
+</div>
+
+<div class="card">
+<input id="amount" type="number" placeholder="Enter bet"><br><br>
+
+<button class="red" onclick="selectBet('Color','Red',this)">Red</button>
+<button class="green" onclick="selectBet('Color','Green',this)">Green</button>
+<button class="violet" onclick="selectBet('Color','Violet',this)">Violet</button>
+
+<br><br>
+
+<button class="num" onclick="selectBet('Number',0,this)">0</button>
+<button class="num" onclick="selectBet('Number',1,this)">1</button>
+<button class="num" onclick="selectBet('Number',2,this)">2</button>
+<button class="num" onclick="selectBet('Number',3,this)">3</button>
+<button class="num" onclick="selectBet('Number',4,this)">4</button>
+<button class="num" onclick="selectBet('Number',5,this)">5</button>
+<button class="num" onclick="selectBet('Number',6,this)">6</button>
+<button class="num" onclick="selectBet('Number',7,this)">7</button>
+<button class="num" onclick="selectBet('Number',8,this)">8</button>
+<button class="num" onclick="selectBet('Number',9,this)">9</button>
+
+<p id="selected">No bet selected</p>
+</div>
+
+<div class="card">
+<h3>🎨 Color History</h3>
+<table>
+<tr><th>Round</th><th>No.</th><th>Color</th></tr>
+<tbody id="colorHistory"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h3>💰 Bet History</h3>
+<table>
+<tr><th>Round</th><th>Bet</th><th>No.</th><th>Color</th><th>Status</th></tr>
+<tbody id="betHistory"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+let wallet = Number(localStorage.getItem("wallet")) || 1000;
+let colorHistory = JSON.parse(localStorage.getItem("colorHistory")) || [];
+let betHistory = JSON.parse(localStorage.getItem("betHistory")) || [];
+let round = Number(localStorage.getItem("round")) || 1;
+
+let timer = 30;
+let betType="", betValue="", betAmount=0;
+
+document.getElementById("wallet").innerText = wallet;
+loadColorHistory();
+loadBetHistory();
+
+setInterval(()=>{
+  timer--;
+  document.getElementById("timer").innerText = timer;
+
+  if(timer === 0){
+    generateRound();
+  }
+
+  if(timer < 0){
+    timer = 30;
+    document.getElementById("result").innerText="Waiting...";
+    document.getElementById("msg").innerText="";
+  }
+},1000);
+
+function selectBet(type,value,btn){
+  let amount = Number(document.getElementById("amount").value);
+  if(amount<=0) return alert("Enter amount");
+  if(amount>wallet) return alert("Low balance");
+
+  document.querySelectorAll("button").forEach(b=>b.classList.remove("selected"));
+  btn.classList.add("selected");
+
+  betType=type;
+  betValue=value;
+  betAmount=amount;
+
+  document.getElementById("selected").innerText =
+    type+" "+value+" | "+amount;
+}
+
+function colorFromNumber(n){
+  if(n==0 || n==5) return "Violet";
+  if(n%2==0) return "Red";
+  return "Green";
+}
+
+function generateRound(){
+  let number = Math.floor(Math.random()*10);
+  let color = colorFromNumber(number);
+
+  colorHistory.unshift({round,number,color});
+  localStorage.setItem("colorHistory",JSON.stringify(colorHistory));
+  loadColorHistory();
+
+  document.getElementById("liveNumber").innerText = number;
+  document.getElementById("result").innerText =
+    "Number: "+number+" | "+color;
+
+  if(betType!=""){
+    let win=false;
+    if(betType=="Number" && number==Number(betValue)) win=true;
+    if(betType=="Color" && color==betValue) win=true;
+
+    let status=win?"Win":"Lose";
+
+    if(win) wallet+=betAmount*2;
+    else wallet-=betAmount;
+
+    document.getElementById("wallet").innerText=wallet;
+    document.getElementById("msg").innerText=status;
+
+    betHistory.unshift({
+      round,
+      bet:betType+" "+betValue+" / "+betAmount,
+      number,
+      color,
+      status
+    });
+
+    localStorage.setItem("wallet",wallet);
+    localStorage.setItem("betHistory",JSON.stringify(betHistory));
+    loadBetHistory();
+  }
+
+  round++;
+  localStorage.setItem("round",round);
+  resetBet();
+}
+
+function loadColorHistory(){
+  let html="";
+  colorHistory.forEach(h=>{
+    html+=`<tr><td>${h.round}</td><td>${h.number}</td><td>${h.color}</td></tr>`;
+  });
+  document.getElementById("colorHistory").innerHTML=html;
+}
+
+function loadBetHistory(){
+  let html="";
+  betHistory.forEach(h=>{
+    html+=`<tr>
+    <td>${h.round}</td>
+    <td>${h.bet}</td>
+    <td>${h.number}</td>
+    <td>${h.color}</td>
+    <td>${h.status}</td>
+    </tr>`;
+  });
+  document.getElementById("betHistory").innerHTML=html;
+}
+
+function resetBet(){
+  betType="";
+  betValue="";
+  betAmount=0;
+  document.getElementById("amount").value="";
+  document.getElementById("selected").innerText="No bet selected";
+  document.querySelectorAll("button").forEach(b=>b.classList.remove("selected"));
+}
+</script>
+
+</body>
+</html>
